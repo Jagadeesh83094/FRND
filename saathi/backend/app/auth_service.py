@@ -32,11 +32,16 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, stored: str) -> bool:
     try:
         algorithm, iterations, salt_text, digest_text = stored.split("\u0024", 3)
-        if algorithm != "pbkdf2_sha256":
+        iteration_count = int(iterations)
+        # Stored hashes can be corrupted or tampered with; never allow their
+        # iteration count to trigger an unbounded CPU-expensive verification.
+        if algorithm != "pbkdf2_sha256" or not 100_000 <= iteration_count <= 1_000_000:
             return False
         salt = base64.urlsafe_b64decode(salt_text + "=" * (-len(salt_text) % 4))
         expected = base64.urlsafe_b64decode(digest_text + "=" * (-len(digest_text) % 4))
-        actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, int(iterations))
+        if len(salt) != 16 or len(expected) != 32:
+            return False
+        actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iteration_count)
         return hmac.compare_digest(actual, expected)
     except (ValueError, TypeError):
         return False
@@ -64,11 +69,16 @@ def verify_access_token(token: str, secret_key: str) -> int:
             raise ValueError("invalid signature")
         payload_bytes = base64.urlsafe_b64decode(payload_text + "=" * (-len(payload_text) % 4))
         payload = json.loads(payload_bytes)
-        if int(payload["exp"]) <= int(time.time()):
-            raise ValueError("expired")
+        now = int(time.time())
+        issued_at = int(payload["iat"])
+        expires_at = int(payload["exp"])
+        if issued_at > now + 60 or expires_at <= now or expires_at <= issued_at:
+            raise ValueError("invalid token lifetime")
+        if expires_at - issued_at > TOKEN_TTL_SECONDS:
+            raise ValueError("token lifetime too long")
         user_id = int(payload["sub"])
         if user_id <= 0:
             raise ValueError("invalid subject")
         return user_id
-    except (ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=401, detail="Invalid or expired access token") from exc

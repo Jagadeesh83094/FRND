@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import Base, SessionLocal, engine
-from .routers import characters, chat, conversations, memories, onboarding, voice
+from .routers import auth, characters, chat, conversations, memories, onboarding, voice
 from .services import character_service
 
 
@@ -37,7 +37,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for module in (characters, chat, conversations, memories, voice, onboarding):
+for module in (auth, characters, chat, conversations, memories, voice, onboarding):
     app.include_router(module.router)
 
 

@@ -4,7 +4,7 @@ Saathi is a voice-first multilingual AI companion with fictional conversational 
 
 ## Security status
 
-**Local development only until real authentication is integrated.** The current X-User-Email header is a development identity stub, not proof of identity. Protected user routes fail closed when ENVIRONMENT=production. Do not make the API public with ENVIRONMENT=development.
+**Local development only until real authentication is integrated.** The current X-User-Email header is a development identity stub, not proof of identity. Protected user routes require a signed bearer token in production; the X-User-Email header is development-only. Account creation is an initial beta implementation and still lacks email verification, password recovery and MFA. Do not open public registration until those controls are addressed.
 
 See [Security and deployment checklist](SECURITY.md) before deploying.
 

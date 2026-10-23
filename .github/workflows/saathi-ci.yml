@@ -1,0 +1,61 @@
+name: Saathi CI
+
+on:
+  pull_request:
+    paths:
+      - "saathi/**"
+      - ".github/workflows/saathi-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "saathi/**"
+      - ".github/workflows/saathi-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: saathi/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: saathi/backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - name: Smoke-test Alembic migrations
+        env:
+          DATABASE_URL: sqlite:////tmp/saathi-migration-test.db
+          ENVIRONMENT: development
+        run: alembic upgrade head
+      - name: Run backend tests
+        env:
+          ENVIRONMENT: development
+          PROVIDER_MODE: mock
+          SARVAM_API_KEY: ""
+        run: pytest -q
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: saathi/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: saathi/frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build frontend
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build

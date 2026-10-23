@@ -4,13 +4,14 @@ from __future__ import annotations
 import base64
 import time
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..db import get_db
 from ..models import CharacterDefinition, User
 from ..providers import ProviderError, get_provider
+from ..rate_limit import enforce_rate_limit
 from ..schemas import STTOut, TTSOut, TTSRequest
 from ..services import character_service, voice_service
 from .deps import get_current_user
@@ -41,14 +42,20 @@ def voice_config():
 
 @router.post("/voice/transcribe", response_model=STTOut)
 async def transcribe(
+    request: Request,
     file: UploadFile = File(...),
     language: str = Form(default="en-IN"),
     mode: str = Form(default="transcribe"),
+    _user: User = Depends(get_current_user),
 ):
-    audio = await file.read()
+    enforce_rate_limit(request, bucket="transcription", limit=10)
+    # Read at most one byte beyond the limit so oversized uploads are rejected
+    # without buffering the entire request body into application memory.
+    audio = await file.read(MAX_AUDIO_BYTES + 1)
     if not audio:
         raise HTTPException(status_code=422, detail="Empty audio")
     if len(audio) > MAX_AUDIO_BYTES:
+        await file.close()
         raise HTTPException(status_code=413, detail="Audio too large (max 10 MB)")
     started = time.perf_counter()
     try:
@@ -58,7 +65,6 @@ async def transcribe(
     except ProviderError as exc:
         raise HTTPException(status_code=502, detail={"kind": exc.kind, "message": exc.user_message()})
     finally:
-        # Never persist raw audio by default.
         del audio
     return {
         "text": result.text,
@@ -101,21 +107,27 @@ async def _tts_response(db, user, character_id, text, language) -> dict:
 async def tts(
     character_id: str,
     payload: TTSRequest,
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_rate_limit(request, bucket="tts", limit=20)
     if not payload.text.strip():
         raise HTTPException(status_code=422, detail="Empty text")
+    if len(payload.text) > 5000:
+        raise HTTPException(status_code=413, detail="Text too long (max 5000 characters)")
     return await _tts_response(db, user, character_id, payload.text.strip(), payload.language)
 
 
 @router.get("/characters/{character_id}/voice-preview", response_model=TTSOut)
 async def voice_preview(
     character_id: str,
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """A short spoken sample so the user can hear the character's voice."""
+    enforce_rate_limit(request, bucket="voice-preview", limit=20)
     definition = _definition(db, character_id)
     uc = character_service.get_or_create_user_character(db, user, character_id)
     sample = (definition.example_greeting or "Hi, it's good to see you.")[:180]

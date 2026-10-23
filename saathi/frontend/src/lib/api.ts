@@ -10,7 +10,20 @@ import type {
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") || "http://localhost:8000";
-const USER_EMAIL = process.env.NEXT_PUBLIC_USER_EMAIL || "demo@saathi.app";
+const DEV_USER_EMAIL = process.env.NEXT_PUBLIC_USER_EMAIL || "demo@saathi.app";
+const TOKEN_KEY = "saathi_access_token";
+
+export function saveAccessToken(token: string) {
+  if (typeof window !== "undefined") window.localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearAccessToken() {
+  if (typeof window !== "undefined") window.localStorage.removeItem(TOKEN_KEY);
+}
+
+export function hasAccessToken(): boolean {
+  return typeof window !== "undefined" && Boolean(window.localStorage.getItem(TOKEN_KEY));
+}
 
 class ApiError extends Error {
   status: number;
@@ -28,7 +41,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     res = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: {
-        "X-User-Email": USER_EMAIL,
+        ...(typeof window !== "undefined" && window.localStorage.getItem(TOKEN_KEY)
+          ? { Authorization: `Bearer ${window.localStorage.getItem(TOKEN_KEY)}` }
+          : { "X-User-Email": DEV_USER_EMAIL }),
         ...(init?.body && !(init.body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
@@ -60,6 +75,11 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   apiBase: API_BASE,
+
+  register: (body: { email: string; password: string; display_name?: string }) =>
+    req<{ access_token: string; token_type: string; expires_in: number; user_id: number; email: string; display_name: string }>("/api/auth/register", { method: "POST", body: JSON.stringify(body) }),
+  login: (body: { email: string; password: string }) =>
+    req<{ access_token: string; token_type: string; expires_in: number; user_id: number; email: string; display_name: string }>("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
 
   voiceConfig: () => req<VoiceConfigInfo>("/api/voice/config"),
 

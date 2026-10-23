@@ -10,6 +10,21 @@ ResponseLength = Literal["short", "medium", "long"]
 Sensitivity = Literal["normal", "sensitive", "intimate"]
 
 
+class AuthIn(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=256)
+    display_name: Optional[str] = Field(default=None, max_length=120)
+
+
+class AuthOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user_id: int
+    email: str
+    display_name: str
+
+
 # --- Characters ------------------------------------------------------------ #
 class VoiceConfigOut(BaseModel):
     provider: str

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import CharacterDefinition, User, UserCharacter
+from ..models import CharacterConversation, CharacterDefinition, User, UserCharacter
 from ..safety import CustomCharacterError
 from ..schemas import (
     CharacterOut,
@@ -58,6 +58,27 @@ def create_custom(
 def get_character(character_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     definition, uc = _resolve(db, user, character_id)
     return character_service.character_to_dict(db, definition, uc)
+
+
+@router.post("/characters/{character_id}/new-chat")
+def create_new_chat(
+    character_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Start a separate conversation while preserving older conversations."""
+    from ..services import conversation_service
+
+    _definition, uc = _resolve(db, user, character_id)
+    db.query(CharacterConversation).filter(
+        CharacterConversation.user_id == user.id,
+        CharacterConversation.user_character_id == uc.id,
+        CharacterConversation.is_active.is_(True),
+    ).update({CharacterConversation.is_active: False}, synchronize_session=False)
+    db.commit()
+
+    convo = conversation_service.get_or_create_active_conversation(db, user, uc)
+    return {"conversation_id": convo.id, "messages": []}
 
 
 @router.get("/characters/{character_id}/session")

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # --- Core ---
     app_name: str = "Saathi"
     environment: str = "development"
+    auth_secret_key: str = ""
     database_url: str = "sqlite:///./saathi.db"
 
     # --- Sarvam ---
@@ -48,6 +49,25 @@ class Settings(BaseSettings):
     # --- Privacy ---
     # When false (default) raw audio is never persisted to disk.
     persist_raw_audio: bool = False
+
+    @property
+    def effective_auth_secret_key(self) -> str:
+        if self.auth_secret_key:
+            return self.auth_secret_key
+        if self.environment.strip().lower() not in {"prod", "production"}:
+            return "saathi-local-development-key-change-before-deploy"
+        return ""
+
+    @property
+    def effective_database_url(self) -> str:
+        # Render and several managed PostgreSQL services provide postgres:// or
+        # postgresql:// URLs. Use the explicitly installed psycopg v3 driver.
+        url = self.database_url
+        if url.startswith("postgres://"):
+            return "postgresql+psycopg://" + url[len("postgres://"):]
+        if url.startswith("postgresql://"):
+            return "postgresql+psycopg://" + url[len("postgresql://"):]
+        return url
 
     @property
     def cors_origin_list(self) -> List[str]:

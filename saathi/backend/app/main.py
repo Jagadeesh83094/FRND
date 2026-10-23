@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import Base, SessionLocal, engine
-from .routers import characters, chat, conversations, memories, onboarding, voice
+from .routers import auth, characters, chat, conversations, memories, onboarding, voice
 from .services import character_service
 
 
@@ -17,7 +17,8 @@ async def lifespan(app: FastAPI):
     # Dev convenience: ensure tables exist and the built-in library is seeded.
     # Production uses `alembic upgrade head` (see README); create_all is a no-op
     # on an already-migrated database.
-    Base.metadata.create_all(bind=engine)
+    if settings.environment.strip().lower() not in {"prod", "production"}:
+        Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
         character_service.ensure_builtin_definitions(db)
@@ -37,7 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for module in (characters, chat, conversations, memories, voice, onboarding):
+for module in (auth, characters, chat, conversations, memories, voice, onboarding):
     app.include_router(module.router)
 
 

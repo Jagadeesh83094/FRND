@@ -1,0 +1,32 @@
+databases:
+  - name: saathi-db
+    plan: free
+    databaseName: saathi
+    user: saathi
+
+services:
+  - type: web
+    name: saathi-api
+    runtime: python
+    plan: free
+    rootDir: saathi/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PROVIDER_MODE
+        value: auto
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saathi-db
+          property: connectionString
+      - key: AUTH_SECRET_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PERSIST_RAW_AUDIO
+        value: "false"

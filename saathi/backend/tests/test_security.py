@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db import Base
+from app import models  # register model tables on Base before creating the test schema
 
 
 @pytest.fixture()

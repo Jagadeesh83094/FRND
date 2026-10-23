@@ -66,6 +66,18 @@ class User(Base, TimestampMixin):
 # --------------------------------------------------------------------------- #
 # voice_configurations  (kept separate from the chat prompt - requirement E)
 # --------------------------------------------------------------------------- #
+class AuthCredential(Base, TimestampMixin):
+    """Password credential stored separately from user profile data."""
+    __tablename__ = "auth_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
+
+
+# --------------------------------------------------------------------------- #
+# voice_configurations  (kept separate from the chat prompt - requirement E)
+# --------------------------------------------------------------------------- #
 class VoiceConfiguration(Base, TimestampMixin):
     __tablename__ = "voice_configurations"
 

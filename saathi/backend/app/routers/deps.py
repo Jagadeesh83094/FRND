@@ -23,7 +23,7 @@ def get_current_user(
     settings = get_settings()
     environment = settings.environment.strip().lower()
     if authorization and authorization.lower().startswith("bearer "):
-        user_id = verify_access_token(authorization[7:].strip(), settings.auth_secret_key)
+        user_id = verify_access_token(authorization[7:].strip(), settings.effective_auth_secret_key)
         user = db.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=401, detail="Account not found")

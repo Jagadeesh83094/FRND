@@ -49,10 +49,13 @@ async def transcribe(
     _user: User = Depends(get_current_user),
 ):
     enforce_rate_limit(request, bucket="transcription", limit=10)
-    audio = await file.read()
+    # Read at most one byte beyond the limit so oversized uploads are rejected
+    # without buffering the entire request body into application memory.
+    audio = await file.read(MAX_AUDIO_BYTES + 1)
     if not audio:
         raise HTTPException(status_code=422, detail="Empty audio")
     if len(audio) > MAX_AUDIO_BYTES:
+        await file.close()
         raise HTTPException(status_code=413, detail="Audio too large (max 10 MB)")
     started = time.perf_counter()
     try:

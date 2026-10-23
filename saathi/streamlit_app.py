@@ -20,6 +20,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+
 def api_request(method, path, *, token=None, **kwargs):
     headers = kwargs.pop("headers", {})
     if token:
@@ -44,9 +45,29 @@ def api_request(method, path, *, token=None, **kwargs):
         return None
     return response.json()
 
+
 def clear_login():
-    for key in ("token", "user", "characters", "selected_character"):
+    for key in (
+        "token", "user", "characters", "selected_character", "active_character",
+        "messages", "conversation_id",
+    ):
         st.session_state.pop(key, None)
+
+
+def load_character_session(character_id):
+    session = api_request(
+        "GET", f"/api/characters/{character_id}/session", token=st.session_state.token
+    )
+    st.session_state.active_character = character_id
+    st.session_state.conversation_id = session.get("conversation_id")
+    st.session_state.messages = [
+        {
+            "role": "assistant" if message.get("role") in ("assistant", "character") else "user",
+            "content": message.get("content", ""),
+        }
+        for message in session.get("messages", [])
+    ]
+
 
 if "token" not in st.session_state:
     login_tab, register_tab = st.tabs(["Log in", "Create account"])
@@ -124,10 +145,13 @@ if not characters:
 
 character_by_id = {str(c.get("id")): c for c in characters}
 options = list(character_by_id.keys())
+
+
 def format_character(cid):
     c = character_by_id[cid]
     nickname = c.get("nickname")
     return f"{c.get('display_name', cid)}" + (f" ({nickname})" if nickname else "")
+
 
 default_id = st.session_state.get("selected_character")
 if default_id not in options:
@@ -136,16 +160,20 @@ selected_id = st.selectbox(
     "Choose your companion", options, index=options.index(default_id),
     format_func=format_character, key="character_picker"
 )
+st.session_state.selected_character = selected_id
+
 if selected_id != st.session_state.get("active_character"):
-    st.session_state.active_character = selected_id
-    st.session_state.messages = []
     try:
-        session = api_request("GET", f"/api/characters/{selected_id}/session", token=token)
-        for message in session.get("messages", []):
-            role = "assistant" if message.get("role") in ("assistant", "character") else "user"
-            st.session_state.messages.append({"role": role, "content": message.get("content", "")})
-    except RuntimeError:
-        pass
+        load_character_session(selected_id)
+    except RuntimeError as exc:
+        st.error(f"Couldn't load this conversation: {exc}")
+        st.stop()
+elif "messages" not in st.session_state:
+    try:
+        load_character_session(selected_id)
+    except RuntimeError as exc:
+        st.error(f"Couldn't load this conversation: {exc}")
+        st.stop()
 
 character = character_by_id[selected_id]
 st.markdown(f"### Chat with {character.get('display_name', 'your companion')}")
@@ -153,13 +181,37 @@ if character.get("short_description"):
     st.caption(character["short_description"])
 st.caption("Saathi is an AI companion, not a human or a substitute for professional help.")
 
-if st.button("Start with a greeting", use_container_width=True):
-    try:
-        result = api_request("POST", f"/api/characters/{selected_id}/greeting", token=token, params={"speak": "false"})
-        st.session_state.messages.append({"role": "assistant", "content": result.get("reply", "Hello! I'm glad you're here.")})
-        st.rerun()
-    except RuntimeError as exc:
-        st.error(str(exc))
+new_chat_col, greeting_col = st.columns(2)
+with new_chat_col:
+    if st.button("＋ New Chat", type="primary", use_container_width=True):
+        try:
+            result = api_request(
+                "POST", f"/api/characters/{selected_id}/new-chat", token=token
+            )
+            st.session_state.conversation_id = result.get("conversation_id")
+            st.session_state.messages = []
+            st.session_state.active_character = selected_id
+            st.session_state.chat_notice = "Started a new conversation. Your previous chat is preserved."
+            st.rerun()
+        except RuntimeError as exc:
+            st.error(f"Couldn't start a new chat: {exc}")
+with greeting_col:
+    if st.button("Start with a greeting", use_container_width=True):
+        try:
+            result = api_request(
+                "POST", f"/api/characters/{selected_id}/greeting",
+                token=token, params={"speak": "false"}
+            )
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": result.get("reply", "Hello! I'm glad you're here."),
+            })
+            st.rerun()
+        except RuntimeError as exc:
+            st.error(str(exc))
+
+if st.session_state.get("chat_notice"):
+    st.success(st.session_state.pop("chat_notice"))
 
 for message in st.session_state.get("messages", []):
     with st.chat_message(message["role"]):

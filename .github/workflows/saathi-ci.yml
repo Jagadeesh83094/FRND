@@ -29,6 +29,11 @@ jobs:
           cache-dependency-path: saathi/backend/requirements.txt
       - name: Install backend dependencies
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - name: Smoke-test Alembic migrations
+        env:
+          DATABASE_URL: sqlite:////tmp/saathi-migration-test.db
+          ENVIRONMENT: development
+        run: alembic upgrade head
       - name: Run backend tests
         env:
           ENVIRONMENT: development

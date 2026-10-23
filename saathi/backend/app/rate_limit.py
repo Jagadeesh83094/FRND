@@ -1,8 +1,7 @@
-"""Small in-process rate limiter for development/single-worker deployments.
+"""In-process rate limiter for local/single-worker deployments.
 
-For multi-worker or public production deployments, replace this with a shared
-store (for example Redis) and configure trusted proxy handling at the edge.
-This is a safety net, not a substitute for authentication or provider quotas.
+For multi-worker/public production, use a shared store or API gateway. This is
+not a substitute for verified authentication or provider quotas.
 """
 from __future__ import annotations
 
@@ -23,19 +22,19 @@ def enforce_rate_limit(request: Request, *, bucket: str, limit: int, window_seco
     cutoff = now - window_seconds
 
     with _LOCK:
+        for stale_key in list(_EVENTS):
+            events = _EVENTS[stale_key]
+            while events and events[0] <= cutoff:
+                events.popleft()
+            if not events:
+                _EVENTS.pop(stale_key, None)
+
         events = _EVENTS[key]
-        while events and events[0] <= cutoff:
-            events.popleft()
         if len(events) >= limit:
+            retry_after = max(1, int(window_seconds - (now - events[0])))
             raise HTTPException(
                 status_code=429,
                 detail=f"Too many {bucket} requests. Please wait and try again.",
-                headers={"Retry-After": str(window_seconds)},
+                headers={"Retry-After": str(retry_after)},
             )
         events.append(now)
-
-        # Opportunistic cleanup to prevent stale client keys accumulating.
-        if len(_EVENTS) > 5000:
-            stale = [k for k, values in _EVENTS.items() if not values or values[-1] <= cutoff]
-            for stale_key in stale[:1000]:
-                _EVENTS.pop(stale_key, None)

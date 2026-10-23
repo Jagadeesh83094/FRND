@@ -23,3 +23,7 @@ See [Security and deployment checklist](SECURITY.md) before deploying.
 4. Start the frontend from frontend/ using npm install and npm run dev.
 
 The mock provider can be used for local development without spending Sarvam credits. Keep the Sarvam key only in the backend environment.
+
+## Deployment (staging first)
+
+A root-level `render.yaml` defines a Render web service and managed PostgreSQL database. Import the repository into Render as a Blueprint, then set the secret environment values it prompts for: `AUTH_SECRET_KEY` (at least 32 random characters; use a cryptographically random value), `SARVAM_API_KEY`, and `CORS_ORIGINS` (the exact deployed frontend origin). Set the frontend project root to `saathi/frontend` on Vercel and configure `NEXT_PUBLIC_API_BASE` to the deployed backend URL. Do not use a public production deployment until identity recovery/verification, shared rate limiting, and account-data isolation have been reviewed. Deploy the backend first, then the frontend; verify `/api/health`, registration/login, and text/voice flows using a test account.

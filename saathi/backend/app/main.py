@@ -17,7 +17,8 @@ async def lifespan(app: FastAPI):
     # Dev convenience: ensure tables exist and the built-in library is seeded.
     # Production uses `alembic upgrade head` (see README); create_all is a no-op
     # on an already-migrated database.
-    Base.metadata.create_all(bind=engine)
+    if settings.environment.strip().lower() not in {"prod", "production"}:
+        Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
         character_service.ensure_builtin_definitions(db)

@@ -20,7 +20,7 @@ This is an initial account-auth layer, not yet a complete public identity system
 2. Remove the frontend NEXT_PUBLIC_USER_EMAIL identity mechanism and send only verified session credentials.
 3. Use a shared rate limiter or API gateway for chat, transcription, TTS and preview endpoints. Enforce quotas and upload limits at the edge too.
 4. Configure exact production CORS origins; do not use wildcard origins with credentials.
-5. Use a persistent managed database and run Alembic migrations as a deployment step.
+5. Use a persistent managed database and run Alembic migrations as a deployment step. Production startup intentionally does not call `create_all`; the deploy command must run `alembic upgrade head`.
 6. Store SARVAM_API_KEY only in backend secret storage. Never expose it in NEXT_PUBLIC variables or commit it.
 7. Keep raw-audio persistence disabled unless explicitly needed and consented to.
 8. Run backend tests, frontend build, dependency/security scans and live-provider smoke tests before release.

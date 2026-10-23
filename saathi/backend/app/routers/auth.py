@@ -24,8 +24,6 @@ def _response(user: User, credential: AuthCredential) -> AuthOut:
 
 @router.post("/register", response_model=AuthOut, status_code=201)
 def register(payload: AuthIn, request: Request, db: Session = Depends(get_db)):
-    from ..services.character_service import get_or_create_user
-    from ..models import User as UserModel
 
     enforce_rate_limit(request, bucket="auth-register", limit=5)
     email = payload.email.strip().lower()
@@ -35,7 +33,7 @@ def register(payload: AuthIn, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail="Password must contain at least 12 characters")
     if len(payload.password) > 256:
         raise HTTPException(status_code=422, detail="Password is too long")
-    if db.scalar(select(UserModel).where(UserModel.email == email)) is not None:
+    if db.scalar(select(User).where(UserModel.email == email)) is not None:
         raise HTTPException(status_code=409, detail="Unable to create account with those details")
     user = UserModel(email=email, display_name=(payload.display_name or email.split("@")[0])[:120])
     db.add(user)

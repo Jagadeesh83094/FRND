@@ -25,7 +25,7 @@ def test_production_rejects_development_identity(monkeypatch, isolated_db):
     monkeypatch.setattr("app.routers.deps.get_settings", lambda: type("S", (), {"environment": "production"})())
     with pytest.raises(HTTPException) as exc:
         get_current_user(x_user_email="victim@example.com", db=isolated_db)
-    assert exc.value.status_code == 503
+    assert exc.value.status_code == 401
 
 
 def test_development_rejects_invalid_email(monkeypatch, isolated_db):
@@ -47,3 +47,19 @@ def test_rate_limiter_rejects_excess_requests():
     with pytest.raises(HTTPException) as exc:
         enforce_rate_limit(request, bucket="test", limit=1, window_seconds=60)
     assert exc.value.status_code == 429
+
+
+
+def test_password_hash_and_token_signature():
+    from app.auth_service import hash_password, verify_password, issue_access_token, verify_access_token
+
+    hashed = hash_password("a-strong-test-password")
+    assert hashed != "a-strong-test-password"
+    assert verify_password("a-strong-test-password", hashed)
+    assert not verify_password("wrong-password", hashed)
+
+    token = issue_access_token(42, "test-signing-key-with-at-least-32-chars")
+    assert verify_access_token(token, "test-signing-key-with-at-least-32-chars") == 42
+    with pytest.raises(HTTPException) as exc:
+        verify_access_token(token, "different-signing-key-with-32-chars")
+    assert exc.value.status_code == 401

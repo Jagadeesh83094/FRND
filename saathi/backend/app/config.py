@@ -59,6 +59,17 @@ class Settings(BaseSettings):
         return ""
 
     @property
+    def effective_database_url(self) -> str:
+        # Render and several managed PostgreSQL services provide postgres:// or
+        # postgresql:// URLs. Use the explicitly installed psycopg v3 driver.
+        url = self.database_url
+        if url.startswith("postgres://"):
+            return "postgresql+psycopg://" + url[len("postgres://"):]
+        if url.startswith("postgresql://"):
+            return "postgresql+psycopg://" + url[len("postgresql://"):]
+        return url
+
+    @property
     def cors_origin_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 

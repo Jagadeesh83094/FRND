@@ -1,0 +1,28 @@
+# Environment files and secrets (allow checked-in templates only)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.db
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# OS and editor
+.DS_Store
+*.log
+.vscode/
+.idea/

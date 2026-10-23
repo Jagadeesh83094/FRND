@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
 def _response(user: User, credential: AuthCredential) -> AuthOut:
     settings = get_settings()
-    token = issue_access_token(user.id, settings.auth_secret_key)
+    token = issue_access_token(user.id, settings.effective_auth_secret_key)
     return AuthOut(access_token=token, token_type="bearer", expires_in=43200,
                    user_id=user.id, email=user.email, display_name=user.display_name)
 

@@ -33,7 +33,7 @@ def register(payload: AuthIn, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail="Password must contain at least 12 characters")
     if len(payload.password) > 256:
         raise HTTPException(status_code=422, detail="Password is too long")
-    if db.scalar(select(User).where(UserModel.email == email)) is not None:
+    if db.scalar(select(User).where(User.email == email)) is not None:
         raise HTTPException(status_code=409, detail="Unable to create account with those details")
     user = UserModel(email=email, display_name=(payload.display_name or email.split("@")[0])[:120])
     db.add(user)

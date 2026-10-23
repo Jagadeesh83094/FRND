@@ -23,7 +23,6 @@ def upgrade() -> None:
         sa.Column("password_hash", sa.String(length=256), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint("user_id", name="uq_auth_credentials_user_id"),
     )
     op.create_index("ix_auth_credentials_user_id", "auth_credentials", ["user_id"], unique=True)
 

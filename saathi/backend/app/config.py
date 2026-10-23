@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # --- Core ---
     app_name: str = "Saathi"
     environment: str = "development"
+    auth_secret_key: str = ""
     database_url: str = "sqlite:///./saathi.db"
 
     # --- Sarvam ---

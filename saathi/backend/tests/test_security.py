@@ -24,7 +24,7 @@ def test_production_rejects_development_identity(monkeypatch, isolated_db):
     from app.routers.deps import get_current_user
     monkeypatch.setattr("app.routers.deps.get_settings", lambda: type("S", (), {"environment": "production"})())
     with pytest.raises(HTTPException) as exc:
-        get_current_user(x_user_email="victim@example.com", db=isolated_db)
+        get_current_user(authorization=None, x_user_email="victim@example.com", db=isolated_db)
     assert exc.value.status_code == 401
 
 
@@ -32,7 +32,7 @@ def test_development_rejects_invalid_email(monkeypatch, isolated_db):
     from app.routers.deps import get_current_user
     monkeypatch.setattr("app.routers.deps.get_settings", lambda: type("S", (), {"environment": "development"})())
     with pytest.raises(HTTPException) as exc:
-        get_current_user(x_user_email="not-an-email", db=isolated_db)
+        get_current_user(authorization=None, x_user_email="not-an-email", db=isolated_db)
     assert exc.value.status_code == 400
 
 

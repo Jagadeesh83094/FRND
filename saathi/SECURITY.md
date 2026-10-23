@@ -8,6 +8,12 @@
 - Review whether public health and voice-config endpoints expose acceptable operational metadata.
 - Do not expose the app publicly while development identity mode is enabled.
 
+## Account authentication added on the hardening branch
+
+The branch now includes email/password registration and login, salted PBKDF2-HMAC-SHA256 password hashes, and 12-hour HMAC-signed bearer tokens. Production protected routes require a valid token and a configured AUTH_SECRET_KEY. The fallback signing key is for development only.
+
+This is an initial account-auth layer, not yet a complete public identity system: email verification, password reset, MFA, refresh/revocation, and account recovery are not implemented. Do not open public registration broadly until verification/recovery and operational controls are added, or replace this with a managed identity provider.
+
 ## Before public deployment
 
 1. Integrate a real identity provider (verified server-side session or JWT); validate issuer, audience and expiry. Derive user identity from verified claims, not a caller-supplied email header.

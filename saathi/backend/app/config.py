@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     persist_raw_audio: bool = False
 
     @property
+    def effective_auth_secret_key(self) -> str:
+        if self.auth_secret_key:
+            return self.auth_secret_key
+        if self.environment.strip().lower() not in {"prod", "production"}:
+            return "saathi-local-development-key-change-before-deploy"
+        return ""
+
+    @property
     def cors_origin_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 

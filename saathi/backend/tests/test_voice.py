@@ -42,10 +42,10 @@ def test_tts_endpoint_synthesizes_text(client, user_headers):
     assert base64.b64decode(r.json()["audio_base64"])[:4] == b"RIFF"
 
 
-def test_transcribe_accepts_audio_and_returns_text(client):
+def test_transcribe_accepts_audio_and_returns_text(client, user_headers):
     files = {"file": ("clip.wav", _tiny_wav(), "audio/wav")}
     data = {"language": "en-IN", "mode": "transcribe"}
-    r = client.post("/api/voice/transcribe", files=files, data=data)
+    r = client.post("/api/voice/transcribe", files=files, data=data, headers=user_headers)
     assert r.status_code == 200
     assert r.json()["text"]
 
